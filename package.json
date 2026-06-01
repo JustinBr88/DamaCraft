@@ -1,0 +1,25 @@
+{
+  "name": "damastro",
+  "version": "1.0.0",
+  "description": "Damas PvE con IA - Checkers AI Game",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "ia",
+    "packages/checkers-core"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend,ia -c blue,green,yellow \"bun run backend:dev\" \"bun run frontend:dev\" \"bun run ia:dev\"",
+    "backend:dev": "bun --cwd backend dev",
+    "frontend:dev": "bun --cwd frontend dev",
+    "ia:dev": "bun --hot ia/src/index.ts",
+    "ia:start": "bun ia/src/index.ts",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:restart": "docker-compose restart"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --board-dark: #1e3a5f;
+  --board-light: #e8d5b7;
+  --piece-red: #c41e3a;
+  --piece-black: #1a1a1a;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Inter', system-ui, sans-serif;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #1a1a2e;
+  color: #f0f0f0;
+  overflow-x: hidden;
+}
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Press Start 2P', 'Courier New', monospace;
+  }
+}
+
+/* Pixel font utility class */
+.font-pixel {
+  font-family: 'Press Start 2P', 'Courier New', monospace !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #5C3010;
+  border: 2px solid #1a1a2e;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8B6914;
+}
+
+/* Ensure images use pixelated rendering */
+img {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Button focus states */
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #FFD700;
+  outline-offset: 2px;
+}
+
+/* Video element styling */
+video {
+  image-rendering: auto;
+}
+
+/* Prevent text selection on game elements */
+.select-none {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Minecraft-style borders */
+.border-mc-4 {
+  border-width: 4px;
+}
+
+.border-mc-t-4 {
+  border-top-width: 4px;
+}
+
+.border-mc-b-4 {
+  border-bottom-width: 4px;
+}
+
+.border-mc-l-4 {
+  border-left-width: 4px;
+}
+
+.border-mc-r-4 {
+  border-right-width: 4px;
+}

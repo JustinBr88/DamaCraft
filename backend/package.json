@@ -1,0 +1,25 @@
+{
+  "name": "damastro-backend",
+  "version": "1.0.0",
+  "description": "Damas PvE Backend - Hono + Bun API",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "bun build src/index.ts --outdir ./dist"
+  },
+  "dependencies": {
+    "@clerk/backend": "^1.25.0",
+    "@damastro/checkers-core": "workspace:*",
+    "@hono/node-server": "^1.13.7",
+    "dotenv": "^16.4.7",
+    "hono": "^4.7.11",
+    "mongoose": "^8.8.4"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/node": "^22.10.5",
+    "bun-types": "^1.1.37"
+  }
+}
