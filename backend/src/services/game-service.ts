@@ -47,6 +47,8 @@ export interface GameActionResult {
   error?: string;
   /** Game-over status (e.g. `'player_wins'`, `'draw'`). */
   status?: GameStatus;
+  /** Player's move that was just applied — useful for frontend animations. */
+  playerMove?: Move | null;
   aiMove?: Move | null;
   aiTimeMs?: number;
   /**
@@ -156,7 +158,7 @@ export async function makePlayerMove(
   const status: GameStatus = evaluateGameStatus(newBoard);
 
   if (status !== 'active') {
-    return await finishGame(game, newBoard, moveRecord, playerCaptures, status);
+    return await finishGame(game, newBoard, requestedMove, playerCaptures, status);
   }
 
   // 10. Check chain state for player
@@ -170,13 +172,13 @@ export async function makePlayerMove(
     game.gameData.moveHistory.push(moveRecord);
     game.stats.totalMoves = game.gameData.moveHistory.length;
     game.stats.playerCaptures = playerCaptures;
-    await game.save();
+await game.save();
 
     return {
       success: true,
       game,
       status: 'active',
-      chainState: nextChainState,
+      playerMove: requestedMove,
     };
   }
 
@@ -273,6 +275,7 @@ export async function makePlayerMove(
         success: true,
         game,
         status: aiStatus,
+        playerMove: requestedMove,
         aiMove: aiResult.move,
         aiTimeMs: totalAiTimeMs,
       };
@@ -293,6 +296,7 @@ export async function makePlayerMove(
         success: true,
         game,
         status: 'active',
+        playerMove: requestedMove,
         aiMove: aiResult.move,
         aiTimeMs: totalAiTimeMs,
       };
@@ -316,6 +320,7 @@ export async function makePlayerMove(
         success: true,
         game,
         status: 'active',
+        playerMove: requestedMove,
         aiMove: aiResult.move,
         aiTimeMs: totalAiTimeMs,
       };
@@ -332,14 +337,27 @@ export async function makePlayerMove(
 async function finishGame(
   game: IGame,
   board: Board,
-  lastMove: typeof game.gameData.moveHistory[0],
+  lastMove: Move,
   playerCaptures: number,
   status: GameStatus
 ): Promise<GameActionResult> {
   game.gameData.board = board as Cell[][];
   game.gameData.currentTurn = 'ai';
   game.gameData.chainState = { active: false, piece: null };
-  game.gameData.moveHistory.push(lastMove);
+
+  // Convert Move to IMoveRecord with flat field names
+  const moveRecord = {
+    actor: 'player' as const,
+    fromRow: lastMove.from.row,
+    fromCol: lastMove.from.col,
+    toRow: lastMove.to.row,
+    toCol: lastMove.to.col,
+    captures: lastMove.captures.map((c: { row: number; col: number }) => ({ row: c.row, col: c.col })),
+    becomesKing: lastMove.becomesKing,
+    timestamp: new Date(),
+  };
+
+  game.gameData.moveHistory.push(moveRecord);
   game.status = 'finished';
   game.winner = status === 'player_wins' ? 'player' : status === 'ai_wins' ? 'ai' : null;
   game.stats.totalMoves = game.gameData.moveHistory.length;
@@ -351,5 +369,6 @@ async function finishGame(
     success: true,
     game,
     status,
+    playerMove: lastMove,
   };
 }
