@@ -34,35 +34,35 @@ function PackageCard({ name, description, price, isOwned, isEquipped, onPurchase
         relative
         bg-gradient-to-b from-mc-stone to-mc-stoneDark
         border-4 border-mc-stoneDark
-        p-4 md:p-6
+        p-3 w-[260px]
         ${isEquipped ? 'ring-4 ring-mc-gold' : ''}
       `}
     >
-      {/* Item frame effect for preview */}
-      <div className="relative mb-4">
-        <div className="absolute inset-0 bg-mc-woodDark" style={{ transform: 'translate(4px, 4px)' }} />
+      {/* Item frame effect for preview - usar object-contain para no cortar */}
+      <div className="relative mb-2">
+        <div className="absolute inset-0 bg-mc-woodDark" style={{ transform: 'translate(3px, 3px)' }} />
         <img
           src={previewSrc}
           alt={name}
-          className="relative w-full h-32 object-cover"
+          className="relative w-full h-32 md:h-36 object-contain"
           style={{ imageRendering: 'pixelated' }}
         />
       </div>
 
       {/* Name */}
-      <h3 className="font-pixel text-lg text-mc-gold uppercase mb-2 text-center">
+      <h3 className="font-pixel text-sm text-mc-gold uppercase mb-1 text-center">
         {name}
       </h3>
 
       {/* Description */}
-      <p className="font-pixel text-xs text-mc-textMuted text-center mb-4 uppercase">
+      <p className="font-pixel text-[10px] text-mc-textMuted text-center mb-2 uppercase">
         {description}
       </p>
 
       {/* Status / Action */}
       {isEquipped ? (
         <div className="text-center">
-          <span className="font-pixel text-sm text-mc-gold animate-pulse uppercase">
+          <span className="font-pixel text-[10px] text-mc-gold animate-pulse uppercase">
             ★ Equipado ★
           </span>
         </div>
@@ -84,15 +84,14 @@ function PackageCard({ name, description, price, isOwned, isEquipped, onPurchase
 }
 
 export function StorePage() {
-  const { skinState, equipSkin, isSkinOwned } = useSkin();
+  const { skinState, equipTheme, isSkinOwned, currentFondo } = useSkin();
   const { playPurchase } = useAudio();
-  const { playTrack, stopMusic } = useMusicWithControl();
+  const { playTrack } = useMusicWithControl();
   const [bonusActive, setBonusActive] = useState(false);
 
-  // Auto-play store music on mount
+  // Auto-play the equipped disco on mount
   useEffect(() => {
-    playTrack('store_music');
-    return () => stopMusic();
+    playTrack(skinState.equippedDisco);
   }, []);
 
   // Check if both premium skins are owned
@@ -110,13 +109,13 @@ export function StorePage() {
   return (
     <PageShell
       title="Tienda"
-      backgroundSrc={FONDOS.overworld.file}
+      backgroundSrc={currentFondo?.file ?? FONDOS.overworld.file}
       showBackButton={true}
       backTo="/"
     >
       <div className="space-y-8">
         {/* Packages grid - Only Nether and End (Overworld is base/default, not sold) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-[640px] mx-auto">
           {/* Nether - Premium */}
           <PackageCard
             name="Nether"
@@ -125,7 +124,7 @@ export function StorePage() {
             isOwned={hasNether}
             isEquipped={skinState.equippedSkin === 'nether'}
             onPurchase={() => handlePurchase('nether')}
-            onEquip={() => equipSkin('nether')}
+            onEquip={() => equipTheme('nether')}
             previewSrc={PORTADAS.tienda.nether}
           />
 
@@ -137,7 +136,7 @@ export function StorePage() {
             isOwned={hasEnd}
             isEquipped={skinState.equippedSkin === 'end'}
             onPurchase={() => handlePurchase('end')}
-            onEquip={() => equipSkin('end')}
+            onEquip={() => equipTheme('end')}
             previewSrc={PORTADAS.tienda.end}
           />
         </div>

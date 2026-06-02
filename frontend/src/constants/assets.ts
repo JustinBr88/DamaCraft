@@ -107,19 +107,23 @@ export type FondoId = keyof typeof FONDOS;
 
 // ─── Music Tracks / Discos ───────────────────────────────────────────────
 
+// ─── Music Tracks / Discos ───────────────────────────────────────────────
+// Canonical mapping from Diseño_Fase2.md
+
 export const DISCOS = {
-  menu_music1: { id: 'menu_music1' as const, name: 'Disco Blocks', displayName: 'Menu Track 1', file: `/musicas/menu_music1.ogg`, disc: `/imagen_discos/music_disc_stal.png` },
-  menu_music2: { id: 'menu_music2' as const, name: 'Disco Wait', displayName: 'Menu Track 2', file: `/musicas/menu_music2.ogg`, disc: `/imagen_discos/music_disc_chirp.png` },
-  menu_music3: { id: 'menu_music3' as const, name: 'Disco Mall', displayName: 'Menu Track 3', file: `/musicas/menu_music3.ogg`, disc: `/imagen_discos/music_disc_mall.png` },
-  menu_music4: { id: 'menu_music4' as const, name: 'Disco Chirp', displayName: 'Menu Track 4', file: `/musicas/menu_music4.ogg`, disc: `/imagen_discos/music_disc_blocks.png` },
-  store_music: { id: 'store_music' as const, name: 'Disco Stal', displayName: 'Store Music', file: `/musicas/store_music.ogg`, disc: `/imagen_discos/music_disc_strad.png` },
-  overwold_music: { id: 'overwold_music' as const, name: 'Disco Strad', displayName: 'Overworld Theme', file: `/musicas/overwold_music.ogg`, disc: `/imagen_discos/music_disc_otherside.png` },
-  nether_music: { id: 'nether_music' as const, name: 'Disco Pigstep', displayName: 'Nether Theme', file: `/musicas/nether_music_premium.ogg`, disc: `/imagen_discos/music_disc_precipice.png` },
-  end_music: { id: 'end_music' as const, name: 'Disco Relic', displayName: 'End Theme', file: `/musicas/end_music_premium.ogg`, disc: `/imagen_discos/music_disc_tears.png` },
-  menu_premium1: { id: 'menu_premium1' as const, name: 'Disco Tears', displayName: 'Premium Track 1', file: `/musicas/menu_music_premium1.ogg`, disc: `/imagen_discos/music_disc_relic.png` },
-  menu_premium2: { id: 'menu_premium2' as const, name: 'Disco Precipice', displayName: 'Premium Track 2', file: `/musicas/menu_music_premium2.ogg`, disc: `/imagen_discos/music_disc_wait.png` },
-  bonus_music1: { id: 'bonus_music1' as const, name: 'Disco Otherside', displayName: 'Bonus Track 1', file: `/musicas/bonus_music_premium1.ogg`, disc: `/imagen_discos/music_disc_pigstep.png` },
-  bonus_music2: { id: 'bonus_music2' as const, name: 'Disco Otherside (Carola Remix)', displayName: 'Bonus Track 2', file: `/musicas/bonus_music_premium2.ogg`, disc: `/imagen_discos/music_disc_pigstep.png` },
+  menu_music1:   { id: 'menu_music1',   name: 'Disco Blocks',   displayName: 'Disco Blocks',   file: `/musicas/menu_music1.ogg`,   disc: `/imagen_discos/music_disc_blocks.png` },
+  menu_music2:   { id: 'menu_music2',   name: 'Disco Wait',     displayName: 'Disco Wait',     file: `/musicas/menu_music2.ogg`,   disc: `/imagen_discos/music_disc_wait.png` },
+  menu_music3:   { id: 'menu_music3',   name: 'Disco Mall',     displayName: 'Disco Mall',     file: `/musicas/menu_music3.ogg`,   disc: `/imagen_discos/music_disc_mall.png` },
+  menu_music4:   { id: 'menu_music4',   name: 'Disco Chirp',    displayName: 'Disco Chirp',    file: `/musicas/menu_music4.ogg`,   disc: `/imagen_discos/music_disc_chirp.png` },
+  store_music:   { id: 'store_music',   name: 'Disco Stal',     displayName: 'Disco Stal',     file: `/musicas/store_music.ogg`,   disc: `/imagen_discos/music_disc_stal.png` },
+  overwold_music:{ id: 'overwold_music',name: 'Disco Strad',     displayName: 'Disco Strad',     file: `/musicas/overwold_music.ogg`,disc: `/imagen_discos/music_disc_strad.png` },
+  // Premium tracks use canonical _premium suffix in IDs
+  nether_music_premium:  { id: 'nether_music_premium',  name: 'Disco Pigstep',   displayName: 'Disco Pigstep',   file: `/musicas/nether_music_premium.ogg`,  disc: `/imagen_discos/music_disc_pigstep.png` },
+  end_music_premium:     { id: 'end_music_premium',     name: 'Disco Relic',     displayName: 'Disco Relic',     file: `/musicas/end_music_premium.ogg`,     disc: `/imagen_discos/music_disc_relic.png` },
+  menu_music_premium1:   { id: 'menu_music_premium1',   name: 'Disco Tears',     displayName: 'Disco Tears',     file: `/musicas/menu_music_premium1.ogg`,   disc: `/imagen_discos/music_disc_tears.png` },
+  menu_music_premium2:   { id: 'menu_music_premium2',   name: 'Disco Precipice',  displayName: 'Disco Precipice',  file: `/musicas/menu_music_premium2.ogg`,   disc: `/imagen_discos/music_disc_precipice.png` },
+  bonus_music_premium1:  { id: 'bonus_music_premium1',  name: 'Disco Otherside',  displayName: 'Disco Otherside',  file: `/musicas/bonus_music_premium1.ogg`,  disc: `/imagen_discos/music_disc_otherside.png` },
+  bonus_music_premium2:  { id: 'bonus_music_premium2',  name: 'Disco Otherside (Carola Remix)', displayName: 'Disco Otherside (Carola Remix)', file: `/musicas/bonus_music_premium2.ogg`, disc: `/imagen_discos/music_disc_otherside.png` },
 } as const;
 
 export type DiscoId = keyof typeof DISCOS;
@@ -209,8 +213,15 @@ export const PORTADAS = {
   // Portadas de tienda para paquetes premium
   tienda: {
     // Overworld NO se vende en tienda (es base/default)
-    nether: '/portadas/portada_tienda.png', // fallback hasta que exista portada_tienda_nether.png
+    nether: '/portadas/portada_tema_nether.png',
     end: '/portadas/portada_tienda_end.png',
+  },
+  // Portadas de fondo (para inventario - sección fondos)
+  fondo: {
+    menu: '/portadas/portada_fondo_menu.png',
+    overworld: '/portadas/portada_fondo_overwold.png',
+    nether: '/portadas/portada_fondo_nether.png',
+    end: '/portadas/portada_fondo_end.png',
   },
 } as const;
 

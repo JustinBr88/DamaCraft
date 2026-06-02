@@ -13,6 +13,9 @@ export function Piece({ piece, isHighlighted = false, highlightColor = '#FFA500'
   const { skinState } = useSkin();
   const images = PIECE_IMAGES[skinState.equippedSkin];
 
+  // Guard against null piece (can happen during animations/render cycles)
+  if (!piece) return null;
+
   const type = piece.king ? 'queen' : 'player';
   const src = piece.color === 'player' ? images.player : images.ai;
   const kingSrc = piece.color === 'player' ? images.playerQueen : images.aiQueen;

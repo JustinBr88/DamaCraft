@@ -3,15 +3,16 @@
  * Determines if a game is finished and who won.
  *
  * Rules:
- * - Game ends ONLY when a player has 0 pieces
+ * - Game ends when a player has 0 pieces
+ * - Game ends when the player whose turn it is has NO legal moves (stalemate = loss)
  * - Draw when both sides have only kings with equal counts
  */
 import type { Board, GameStatus, PlayerColor } from './types';
-import { countPieces } from './moves';
+import { countPieces, hasNoLegalMoves } from './moves';
 
 /**
  * Evaluates the current board and returns the game status.
- * Only checks piece count — does NOT check for no-legal-moves stalemate.
+ * Checks piece count AND whether the active player can make any legal moves.
  */
 export function evaluateGameStatus(board: Board): GameStatus {
   const playerPieces = countPieces(board, 'player');
@@ -19,6 +20,11 @@ export function evaluateGameStatus(board: Board): GameStatus {
 
   if (playerPieces === 0) return 'ai_wins';
   if (aiPieces === 0) return 'player_wins';
+
+  // Stalemate: player whose turn it is has no legal moves = that player loses
+  // When evaluating after a move, the turn will have switched, so we check both.
+  if (hasNoLegalMoves(board, 'player')) return 'ai_wins';
+  if (hasNoLegalMoves(board, 'ai')) return 'player_wins';
 
   // Draw check: only kings left with equal counts
   if (areKingsOnly(board, 'player') && areKingsOnly(board, 'ai')) {

@@ -2,6 +2,7 @@ import type { Board as BoardType, Move, ChainState } from '@damastro/checkers-co
 import { Cell } from './Cell';
 import { TABLEROS } from '../constants/assets';
 import type { TableroTheme } from '../constants/assets';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface BoardProps {
   board: BoardType;
@@ -12,6 +13,14 @@ interface BoardProps {
   onCellClick: (row: number, col: number) => void;
   isInteractionDisabled: boolean;
   moveAnimationDelay?: number;
+  isAnimating?: boolean;
+  animateMove?: {
+    from: { row: number; col: number };
+    to: { row: number; col: number };
+    captures: Array<{ row: number; col: number }>;
+    becomesKing: boolean;
+    pieceColor: 'player' | 'ai';
+  } | null;
 }
 
 export function Board({
@@ -23,6 +32,8 @@ export function Board({
   onCellClick,
   isInteractionDisabled,
   moveAnimationDelay = 2000,
+  isAnimating = false,
+  animateMove = null,
 }: BoardProps) {
   // Get board texture for this theme
   const texturas = TABLEROS[theme];
@@ -36,21 +47,18 @@ export function Board({
   };
 
   const isPlayerPiece = (row: number, col: number): boolean => {
-    const piece = board[row][col];
-    return piece !== null && piece.color === 'player';
+    const piece = board[row]?.[col];
+    return piece !== null && piece?.color === 'player';
   };
 
   const isLastMove = (_row: number, _col: number): boolean => {
     return false; // Could be enhanced with last move highlighting
   };
 
-  // Check if this cell is the chain target (piece being captured in chain)
+  // Check if this cell is the chain target (piece that must continue capturing)
   const isChainTarget = (row: number, col: number): boolean => {
     if (!chainState?.active || !chainState.piece) return false;
-    // The captured piece is at the position we're moving to in the chain
-    // chainState.piece contains the position of the piece that made the capture
-    // and the chain continues from there
-    return false; // Will be determined by the capture position
+    return chainState.piece.row === row && chainState.piece.col === col;
   };
 
   const handleClick = (row: number, col: number) => {
@@ -71,15 +79,15 @@ export function Board({
 
   return (
     <div
-      className="inline-grid grid-cols-8 rounded-lg overflow-hidden shadow-2xl"
+      className="inline-block rounded-lg overflow-hidden shadow-2xl"
       style={{
         backgroundImage: `url(${texturas.bordes})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        padding: '8px', // Space for bordes texture
+        padding: '10px',
       }}
     >
-      <div className="grid grid-cols-8 gap-0">
+      <div className="grid grid-cols-8" style={{ width: 'min(92vw, 420px)', height: 'min(92vw, 420px)' }}>
         {board.map((row, rowIdx) =>
           row.map((cell, colIdx) => (
             <Cell
@@ -91,8 +99,11 @@ export function Board({
               isValidMove={isValidMove(rowIdx, colIdx)}
               isPlayerPiece={isPlayerPiece(rowIdx, colIdx)}
               isLastMove={isLastMove(rowIdx, colIdx)}
+              isChainTarget={isChainTarget(rowIdx, colIdx)}
               chainState={chainState}
               theme={theme}
+              isAnimating={isAnimating}
+              animateMove={animateMove}
               onClick={() => handleClick(rowIdx, colIdx)}
             />
           ))

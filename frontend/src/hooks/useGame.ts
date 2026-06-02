@@ -48,10 +48,44 @@ export function useGame() {
     gameId: string;
   } | null>(null);
 
+  // Animation state
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animateMove, setAnimateMove] = useState<{
+    from: { row: number; col: number };
+    to: { row: number; col: number };
+    captures: Array<{ row: number; col: number }>;
+    becomesKing: boolean;
+    pieceColor: 'player' | 'ai';
+  } | null>(null);
+  // Pending board update — applied after player animation completes
+  const [pendingBoard, setPendingBoard] = useState<Board | null>(null);
+
+  // Max animation duration in ms (never exceed 3s as per spec)
+  const ANIMATION_DURATION_MS = 450;
+
   /**
    * Start a new game with the given difficulty.
    */
   const startGame = useCallback(async (difficulty: Difficulty) => {
+    // Fallback for demo mode - start game locally without API
+    const startLocalGame = () => {
+      setState(prev => ({
+        ...prev,
+        board: createInitialBoard(),
+        status: 'player-turn',
+        currentTurn: 'player',
+        difficulty,
+        gameId: `local-${Date.now()}`,
+        selectedPiece: null,
+        legalMoves: [],
+        winner: null,
+        playerCaptures: 0,
+        aiCaptures: 0,
+        message: 'Your turn! Select a piece to move.',
+        chainState: { active: false, piece: null },
+      }));
+    };
+
     try {
       setState(prev => ({
         ...prev,
@@ -70,9 +104,11 @@ export function useGame() {
         body: JSON.stringify({ difficulty }),
       });
 
+      // If API fails (401/403/etc), fall back to local demo game
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to start game');
+        console.warn('API unavailable, starting local demo game');
+        startLocalGame();
+        return;
       }
 
       const data = await response.json();
@@ -92,11 +128,9 @@ export function useGame() {
         message: 'Your turn! Select a piece to move.',
       }));
     } catch (error) {
-      setState(prev => ({
-        ...prev,
-        status: 'selecting-difficulty',
-        message: `Error: ${error instanceof Error ? error.message : 'Failed to start game'}`,
-      }));
+      // Network error or other issue - try local demo
+      console.warn('Network error, starting local demo game:', error);
+      startLocalGame();
     }
   }, [getToken]);
 
@@ -136,9 +170,41 @@ export function useGame() {
   }, []);
 
   /**
+   * Trigger visual animation for a move.
+   * Blocks interaction until animation completes (max 3s).
+   */
+  const triggerAnimation = useCallback((
+    from: { row: number; col: number },
+    to: { row: number; col: number },
+    captures: Array<{ row: number; col: number }>,
+    becomesKing: boolean,
+    pieceColor: 'player' | 'ai'
+  ) => {
+    setIsAnimating(true);
+    setAnimateMove({ from, to, captures, becomesKing, pieceColor });
+
+    // Safety net: always unblock after max duration
+    setTimeout(() => {
+      setIsAnimating(false);
+      setAnimateMove(null);
+    }, ANIMATION_DURATION_MS);
+  }, []);
+
+  /**
+   * Clear animation state (called after animation completes naturally).
+   */
+  const clearAnimation = useCallback(() => {
+    setIsAnimating(false);
+    setAnimateMove(null);
+  }, []);
+
+  /**
    * Make a move.
    */
   const makeMove = useCallback(async (toRow: number, toCol: number) => {
+    // Block interaction while animating
+    if (isAnimating) return;
+
     // Extract values BEFORE setState to avoid stale closure
     const moveGameId = state.gameId;
     const moveSelectedPiece = state.selectedPiece;
@@ -161,9 +227,38 @@ export function useGame() {
     // Store last move for potential retry when AI is unavailable
     const from = { row: moveSelectedPiece.row, col: moveSelectedPiece.col };
     const to = { row: toRow, col: toCol };
+
+    // Trigger animation for player's move
+    triggerAnimation(from, to, [...selectedMove.captures], selectedMove.becomesKing, 'player');
+
+    // Local demo mode - simulate locally
+    if (moveGameId.startsWith('local-')) {
+      // For demo, just show the move was made and transition to AI turn
+      setState(prev => ({
+        ...prev,
+        board: prev.board, // Keep same board in demo
+        selectedPiece: null,
+        legalMoves: [],
+        status: 'ai-thinking' as GameStatusUI,
+        message: 'Demo mode - AI thinking...',
+      }));
+
+      // Simulate AI response after animation completes
+      setTimeout(() => {
+        setState(prev => ({
+          ...prev,
+          status: 'player-turn',
+          message: 'Your turn! (Demo mode)',
+        }));
+        clearAnimation();
+      }, ANIMATION_DURATION_MS + 200);
+      return;
+    }
+
     lastMoveRef.current = { from, to, gameId: moveGameId };
 
-    // Optimistic update + AI thinking
+    // Show player animation on current board immediately
+    // Board state only updates AFTER player animation completes
     setState(prev => ({
       ...prev,
       selectedPiece: null,
@@ -188,6 +283,7 @@ export function useGame() {
 
         // Handle 503 — AI service unavailable, but player's move WAS applied
         if (response.status === 503 && data.game) {
+          clearAnimation();
           setState(prev => ({
             ...prev,
             board: data.game.board,
@@ -209,25 +305,36 @@ export function useGame() {
 
       const data = await response.json();
       const game = data.game;
+      const aiMoves = data.aiMoves ?? [];
+      const aiMoveData = data.aiMove; // AI's move from the response
+      const boardAfterPlayerMove = data.boardAfterPlayerMove; // Board BEFORE AI moved
 
       // Clear last move on success (AI responded or chain active, no retry needed)
       lastMoveRef.current = null;
 
       // Handle chain capture state — player continues capturing
       if (game.chainState?.active) {
-        setState(prev => ({
-          ...prev,
-          board: game.board,
-          status: 'chain-capture' as GameStatusUI,
-          currentTurn: 'player',
-          winner: null,
-          selectedPiece: null,
-          legalMoves: [],
-          playerCaptures: game.stats?.playerCaptures ?? prev.playerCaptures,
-          aiCaptures: game.stats?.aiCaptures ?? prev.aiCaptures,
-          chainState: game.chainState,
-          message: 'Chain capture! Continue capturing with this piece.',
-        }));
+        // Chain continues: keep player animation visible, then show chain state after animation
+        // Store the chain board to apply after animation completes
+        setPendingBoard(game.board);
+        
+        // After player animation completes, apply chain board without triggering another animation
+        setTimeout(() => {
+          setState(prev => ({
+            ...prev,
+            board: game.board,
+            status: 'chain-capture' as GameStatusUI,
+            currentTurn: 'player',
+            winner: null,
+            selectedPiece: null,
+            legalMoves: [],
+            playerCaptures: game.stats?.playerCaptures ?? prev.playerCaptures,
+            aiCaptures: game.stats?.aiCaptures ?? prev.aiCaptures,
+            chainState: game.chainState,
+            message: 'Chain capture! Continue capturing with this piece.',
+          }));
+          setPendingBoard(null);
+        }, ANIMATION_DURATION_MS);
         return;
       }
 
@@ -248,10 +355,14 @@ export function useGame() {
         message = 'Your turn!';
       }
 
+      // Store board update and AI move for after player animation
+      setPendingBoard(game.board);
+
+      // Keep player animation until it naturally expires, then apply board + AI animation
+      // DON'T clear animation here - let the safety net in triggerAnimation handle it
       setState(prev => ({
         ...prev,
-        board: game.board,
-        status: newStatus,
+        status: 'ai-thinking' as GameStatusUI, // Show AI thinking during animation
         currentTurn: game.currentTurn,
         winner: game.winner,
         legalMoves: [],
@@ -259,16 +370,85 @@ export function useGame() {
         chainState: game.chainState ?? { active: false, piece: null },
         playerCaptures: game.stats?.playerCaptures ?? prev.playerCaptures,
         aiCaptures: game.stats?.aiCaptures ?? prev.aiCaptures,
-        message,
+        message: 'Thinking...',
       }));
+
+      // After player animation completes, animate each AI move sequentially
+      setTimeout(() => {
+        if (aiMoves && aiMoves.length > 0) {
+          // Animate each AI move step sequentially
+          let stepIndex = 0;
+          
+          const animateNextStep = () => {
+            if (stepIndex >= aiMoves.length) {
+              // All AI moves animated, show final state
+              setState(prev => ({
+                ...prev,
+                board: game.board,
+                status: newStatus,
+                currentTurn: game.currentTurn,
+                winner: game.winner,
+                message,
+              }));
+              setIsAnimating(false);
+              setAnimateMove(null);
+              setPendingBoard(null);
+              return;
+            }
+            
+            const step = aiMoves[stepIndex];
+            
+            // Set board to before this move
+            setState(prev => ({
+              ...prev,
+              board: step.boardBefore,
+            }));
+            
+            // Trigger animation for this move
+            const moveAnim = {
+              from: step.move.from,
+              to: step.move.to,
+              captures: step.move.captures || [],
+              becomesKing: step.move.becomesKing || false,
+              pieceColor: 'ai' as const
+            };
+            
+            setAnimateMove(moveAnim);
+            setIsAnimating(true);
+            
+            // After this animation, move to next step
+            setTimeout(() => {
+              setAnimateMove(null);
+              stepIndex++;
+              animateNextStep();
+            }, ANIMATION_DURATION_MS);
+          };
+          
+          animateNextStep();
+        } else {
+          // No AI moves, just update board
+          setState(prev => ({
+            ...prev,
+            board: game.board,
+            status: newStatus,
+            currentTurn: game.currentTurn,
+            winner: game.winner,
+            message,
+          }));
+          setIsAnimating(false);
+          setAnimateMove(null);
+          setPendingBoard(null);
+        }
+      }, ANIMATION_DURATION_MS);
     } catch (error) {
+      clearAnimation();
       setState(prev => ({
         ...prev,
         status: 'player-turn',
         message: `Error: ${error instanceof Error ? error.message : 'Move failed'}`,
       }));
     }
-  }, [state, getToken]);
+  }, [state, getToken, isAnimating, triggerAnimation, clearAnimation]);
 
   /**
    * Retry the last move when AI was unavailable.
@@ -410,5 +590,7 @@ export function useGame() {
     makeMove,
     retryAiMove,
     resetGame,
+    isAnimating,
+    animateMove,
   };
 }

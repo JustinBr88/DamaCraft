@@ -3,6 +3,7 @@ import { PageShell } from '../components/ui/PageShell';
 import { StoneButton } from '../components/ui/StoneButton';
 import { motion } from 'framer-motion';
 import { useAudio } from '../hooks/useAudio';
+import { useSkin } from '../hooks/useSkin';
 import { FONDOS } from '../constants/assets';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
@@ -35,6 +36,7 @@ const MOCK_ENTRIES: Record<Difficulty, LeaderboardEntry[]> = {
 
 export function LeaderboardPage() {
   const { playButtonClick } = useAudio();
+  const { currentFondo } = useSkin();
   const [activeFilter, setActiveFilter] = useState<Difficulty>('easy');
   const entries = MOCK_ENTRIES[activeFilter];
 
@@ -52,7 +54,7 @@ export function LeaderboardPage() {
   return (
     <PageShell
       title="Tablero"
-      backgroundSrc={FONDOS.overworld.file}
+      backgroundSrc={currentFondo?.file ?? FONDOS.overworld.file}
       showBackButton={true}
       backTo="/"
     >

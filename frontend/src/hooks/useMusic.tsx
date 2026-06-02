@@ -91,6 +91,16 @@ function useStandaloneMusic(): UseMusicReturn {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Avoid restart when navigating between pages with the same track still playing.
+    // Compare against audio.currentSrc (actual loaded track) rather than state,
+    // so equipping a different disco properly overrides the previous one.
+    const currentSrc = audio.currentSrc || '';
+    const isSameTrack = currentSrc.includes(DISCOS[discoId]?.file ?? '') && !audio.ended;
+
+    if (isSameTrack) {
+      return;
+    }
+
     const disco = DISCOS[discoId];
     audio.src = disco.file;
     audio.loop = loop;
@@ -259,6 +269,16 @@ export function MusicProvider({ children }: MusicProviderProps) {
   const playTrack = useCallback((discoId: DiscoId, loop = true) => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    // Avoid restart when navigating between pages with the same track still playing.
+    // Compare against audio.currentSrc (actual loaded track) rather than state,
+    // so equipping a different disco properly overrides the previous one.
+    const currentSrc = audio.currentSrc || '';
+    const isSameTrack = currentSrc.includes(DISCOS[discoId]?.file ?? '') && !audio.ended;
+
+    if (isSameTrack) {
+      return;
+    }
 
     const disco = DISCOS[discoId];
     audio.src = disco.file;

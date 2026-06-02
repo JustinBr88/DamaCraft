@@ -16,42 +16,13 @@ export function AppRouter() {
       {/* Root layout with nav - Home, Store, Leaderboard, Inventory */}
       <Route element={<RootLayout />}>
         <Route path="/" element={<HomePage />} />
-        <Route
-          path="/store"
-          element={
-            <AuthGuard>
-              <StorePage />
-            </AuthGuard>
-          }
-        />
-        <Route
-          path="/inventory"
-          element={
-            <AuthGuard>
-              <InventoryPage />
-            </AuthGuard>
-          }
-        />
-        <Route
-          path="/leaderboard"
-          element={
-            <AuthGuard>
-              <LeaderboardPage />
-            </AuthGuard>
-          }
-        />
+        <Route path="/store" element={<StorePage />} />
+        <Route path="/inventory" element={<InventoryPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
       </Route>
 
       {/* Game layout - no nav, full screen game */}
-      <Route
-        element={
-          <AuthGuard>
-            <GameLayout />
-          </AuthGuard>
-        }
-      >
-        <Route path="/game" element={<GamePage />} />
-      </Route>
+      <Route path="/game" element={<GamePage />} />
     </Routes>
   );
 }

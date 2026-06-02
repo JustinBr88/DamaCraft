@@ -6,11 +6,9 @@
  * When `getAiMove()` returns a failure result, the `status` discriminator
  * tells us how to react:
  *
- *   `no_moves`    → AI has no legal moves but the game does NOT end
- *                    for that reason. Treated as an availability issue —
- *                    the player's move IS applied and saved, the game
- *                    stays `active`, and `aiError` is set so the API
- *                    layer can inform the frontend.
+ *   `no_moves`    → AI has no legal moves → player wins (game over).
+ *                    The move is NOT applied again (already applied before
+ *                    calling AI), the game is saved as finished.
  *
  *   `timeout`     → Infrastructure failure (AI timed out).
  *   `unavailable` → Infrastructure failure (AI unreachable / HTTP error).
@@ -49,7 +47,15 @@ export interface GameActionResult {
   status?: GameStatus;
   /** Player's move that was just applied — useful for frontend animations. */
   playerMove?: Move | null;
+  /** Board state BEFORE the AI moved (after only the player's move was applied) — for AI animation. */
+  boardAfterPlayerMove?: Board | null;
   aiMove?: Move | null;
+  /** Complete chain of AI moves with board snapshots — each step in the AI's turn. */
+  aiMoves?: Array<{
+    move: Move;
+    boardBefore: Board;
+    boardAfter: Board;
+  }>;
   aiTimeMs?: number;
   /**
    * Set when the player's move was applied BUT the AI service was
@@ -179,6 +185,7 @@ await game.save();
       game,
       status: 'active',
       playerMove: requestedMove,
+      boardAfterPlayerMove: newBoard,
     };
   }
 
@@ -200,6 +207,11 @@ await game.save();
     becomesKing: boolean;
     timestamp: Date;
   }> = [];
+  const aiMoveSteps: Array<{
+    move: Move;
+    boardBefore: Board;
+    boardAfter: Board;
+  }> = [];
 
   while (true) {
     const aiResult = await getAiMove(
@@ -209,25 +221,53 @@ await game.save();
       currentAiChainState ?? undefined
     );
 
-    // ── Handle AI failure according to status discriminator ──────────
-    if (!aiResult.success) {
-      // Save player's move + any accumulated AI moves, keep game active
-      game.gameData.board = currentBoard as Cell[][];
-      game.gameData.currentTurn = 'ai';
-      game.gameData.chainState = currentAiChainState ?? { active: false, piece: null };
-      game.gameData.moveHistory.push(moveRecord, ...aiMoveRecords);
-      game.stats.totalMoves = game.gameData.moveHistory.length;
-      game.stats.playerCaptures = playerCaptures;
-      game.stats.aiCaptures = currentAiCaptures;
-      await game.save();
+// ── Handle AI failure according to status discriminator ──────────
+       if (!aiResult.success) {
+         // `no_moves` means AI has no legal moves available → player wins (game over)
+         if (aiResult.status === 'no_moves') {
+           game.gameData.board = currentBoard as Cell[][];
+           game.gameData.currentTurn = 'player';
+           game.gameData.chainState = { active: false, piece: null };
+           game.gameData.moveHistory.push(moveRecord, ...aiMoveRecords);
+           game.stats.totalMoves = game.gameData.moveHistory.length;
+           game.stats.playerCaptures = playerCaptures;
+           game.stats.aiCaptures = currentAiCaptures;
+           game.status = 'finished';
+           game.winner = 'player';
+           await game.save();
 
-      return {
-        success: true,
-        game,
-        status: 'active',
-        aiError: aiResult.error || 'AI service unavailable',
-      };
-    }
+           return {
+             success: true,
+             game,
+             status: 'player_wins',
+             playerMove: requestedMove,
+             boardAfterPlayerMove: newBoard,
+             aiMove: null,
+             aiMoves: aiMoveSteps,
+             aiTimeMs: totalAiTimeMs,
+           };
+         }
+
+         // `timeout` / `unavailable` — infrastructure error; keep game active
+         game.gameData.board = currentBoard as Cell[][];
+         game.gameData.currentTurn = 'ai';
+         game.gameData.chainState = currentAiChainState ?? { active: false, piece: null };
+         game.gameData.moveHistory.push(moveRecord, ...aiMoveRecords);
+         game.stats.totalMoves = game.gameData.moveHistory.length;
+         game.stats.playerCaptures = playerCaptures;
+         game.stats.aiCaptures = currentAiCaptures;
+         await game.save();
+
+         return {
+           success: true,
+           game,
+           status: 'active',
+           playerMove: requestedMove,
+           boardAfterPlayerMove: newBoard,
+           aiMoves: aiMoveSteps,
+           aiError: aiResult.error || 'AI service unavailable',
+         };
+       }
 
     // Guard: AI responded successfully but without a move
     if (!aiResult.move) {
@@ -237,10 +277,17 @@ await game.save();
       };
     }
 
-    // 12. Apply AI move
-    const { newBoard: boardAfterAi, pieceBecameKing: aiPieceBecameKing } = applyMove(currentBoard, aiResult.move);
+     // 12. Apply AI move
+     const { newBoard: boardAfterAi, pieceBecameKing: aiPieceBecameKing } = applyMove(currentBoard, aiResult.move);
 
-    const aiMoveRecord = {
+     // Track this AI move step with board snapshots
+     aiMoveSteps.push({
+       move: aiResult.move,
+       boardBefore: currentBoard,
+       boardAfter: boardAfterAi,
+     });
+
+     const aiMoveRecord = {
       actor: 'ai' as const,
       fromRow: aiResult.move.from.row,
       fromCol: aiResult.move.from.col,
@@ -258,73 +305,79 @@ await game.save();
     // 13. Check game status after AI move
     const aiStatus = evaluateGameStatus(boardAfterAi);
 
-    if (aiStatus !== 'active') {
-      // Game over — AI wins or draw
-      game.gameData.board = boardAfterAi as Cell[][];
-      game.gameData.currentTurn = 'player';
-      game.gameData.chainState = { active: false, piece: null };
-      game.gameData.moveHistory.push(moveRecord, ...aiMoveRecords);
-      game.stats.totalMoves = game.gameData.moveHistory.length;
-      game.stats.playerCaptures = playerCaptures;
-      game.stats.aiCaptures = currentAiCaptures;
-      game.status = 'finished';
-      game.winner = aiStatus === 'player_wins' ? 'player' : aiStatus === 'ai_wins' ? 'ai' : null;
-      await game.save();
+     if (aiStatus !== 'active') {
+        // Game over — AI wins or draw
+        game.gameData.board = boardAfterAi as Cell[][];
+        game.gameData.currentTurn = 'player';
+        game.gameData.chainState = { active: false, piece: null };
+        game.gameData.moveHistory.push(moveRecord, ...aiMoveRecords);
+        game.stats.totalMoves = game.gameData.moveHistory.length;
+        game.stats.playerCaptures = playerCaptures;
+        game.stats.aiCaptures = currentAiCaptures;
+        game.status = 'finished';
+        game.winner = aiStatus === 'player_wins' ? 'player' : aiStatus === 'ai_wins' ? 'ai' : null;
+        await game.save();
 
-      return {
-        success: true,
-        game,
-        status: aiStatus,
-        playerMove: requestedMove,
-        aiMove: aiResult.move,
-        aiTimeMs: totalAiTimeMs,
-      };
-    }
+        return {
+          success: true,
+          game,
+          status: aiStatus,
+          playerMove: requestedMove,
+          boardAfterPlayerMove: newBoard,
+          aiMove: aiResult.move,
+          aiMoves: aiMoveSteps,
+          aiTimeMs: totalAiTimeMs,
+        };
+      }
 
-    // 14. AI became king → chain ends immediately, switch to player
-    if (aiPieceBecameKing) {
-      game.gameData.board = boardAfterAi as Cell[][];
-      game.gameData.currentTurn = 'player';
-      game.gameData.chainState = { active: false, piece: null };
-      game.gameData.moveHistory.push(moveRecord, ...aiMoveRecords);
-      game.stats.totalMoves = game.gameData.moveHistory.length;
-      game.stats.playerCaptures = playerCaptures;
-      game.stats.aiCaptures = currentAiCaptures;
-      await game.save();
+     // 14. AI became king → chain ends immediately, switch to player
+      if (aiPieceBecameKing) {
+        game.gameData.board = boardAfterAi as Cell[][];
+        game.gameData.currentTurn = 'player';
+        game.gameData.chainState = { active: false, piece: null };
+        game.gameData.moveHistory.push(moveRecord, ...aiMoveRecords);
+        game.stats.totalMoves = game.gameData.moveHistory.length;
+        game.stats.playerCaptures = playerCaptures;
+        game.stats.aiCaptures = currentAiCaptures;
+        await game.save();
 
-      return {
-        success: true,
-        game,
-        status: 'active',
-        playerMove: requestedMove,
-        aiMove: aiResult.move,
-        aiTimeMs: totalAiTimeMs,
-      };
-    }
+        return {
+          success: true,
+          game,
+          status: 'active',
+          playerMove: requestedMove,
+          boardAfterPlayerMove: newBoard,
+          aiMove: aiResult.move,
+          aiMoves: aiMoveSteps,
+          aiTimeMs: totalAiTimeMs,
+        };
+      }
 
     // 15. Check chain state for AI
     const aiChainState = getNextChainState(boardAfterAi, aiResult.move, 'ai');
 
-    if (!aiChainState.active) {
-      // No more chain — switch to player
-      game.gameData.board = boardAfterAi as Cell[][];
-      game.gameData.currentTurn = 'player';
-      game.gameData.chainState = { active: false, piece: null };
-      game.gameData.moveHistory.push(moveRecord, ...aiMoveRecords);
-      game.stats.totalMoves = game.gameData.moveHistory.length;
-      game.stats.playerCaptures = playerCaptures;
-      game.stats.aiCaptures = currentAiCaptures;
-      await game.save();
+     if (!aiChainState.active) {
+        // No more chain — switch to player
+        game.gameData.board = boardAfterAi as Cell[][];
+        game.gameData.currentTurn = 'player';
+        game.gameData.chainState = { active: false, piece: null };
+        game.gameData.moveHistory.push(moveRecord, ...aiMoveRecords);
+        game.stats.totalMoves = game.gameData.moveHistory.length;
+        game.stats.playerCaptures = playerCaptures;
+        game.stats.aiCaptures = currentAiCaptures;
+        await game.save();
 
-      return {
-        success: true,
-        game,
-        status: 'active',
-        playerMove: requestedMove,
-        aiMove: aiResult.move,
-        aiTimeMs: totalAiTimeMs,
-      };
-    }
+        return {
+          success: true,
+          game,
+          status: 'active',
+          playerMove: requestedMove,
+          boardAfterPlayerMove: newBoard,
+          aiMove: aiResult.move,
+          aiMoves: aiMoveSteps,
+          aiTimeMs: totalAiTimeMs,
+        };
+      }
 
     // 16. Chain still active — continue AI loop
     currentBoard = boardAfterAi;

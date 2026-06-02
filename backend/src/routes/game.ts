@@ -176,43 +176,49 @@ gameRouter.post('/:id/move', async (c) => {
 
     const elapsed = Date.now() - startTime;
 
-    // ── AI service unavailable — player's move was saved ────────────────
-    // Return 503 so the frontend knows the game was updated but the AI
-    // response is missing. The game stays `active` with `currentTurn = 'ai'`.
-    if (result.aiError) {
-      return c.json({
-        message: 'Move applied',
-        error: result.aiError,
-        game: {
-          id: result.game!._id,
-          status: result.game!.status,
-          winner: result.game!.winner,
-          board: result.game!.gameData.board,
-          currentTurn: result.game!.gameData.currentTurn,
-          chainState: result.game!.gameData.chainState,
-          stats: result.game!.stats,
-        },
-        aiMove: null,
-        aiTimeMs: null,
-        totalTimeMs: elapsed,
-      }, 503);
-    }
+     // ── AI service unavailable — player's move was saved ────────────────
+     // Return 503 so the frontend knows the game was updated but the AI
+     // response is missing. The game stays `active` with `currentTurn = 'ai'`.
+     if (result.aiError) {
+       return c.json({
+         message: 'Move applied',
+         error: result.aiError,
+         game: {
+           id: result.game!._id,
+           status: result.game!.status,
+           winner: result.game!.winner,
+           board: result.game!.gameData.board,
+           currentTurn: result.game!.gameData.currentTurn,
+           chainState: result.game!.gameData.chainState,
+           stats: result.game!.stats,
+         },
+         boardAfterPlayerMove: result.boardAfterPlayerMove ?? null,
+         playerMove: result.playerMove ?? null,
+         aiMove: null,
+         aiMoves: [],
+         aiTimeMs: null,
+         totalTimeMs: elapsed,
+       }, 503);
+     }
 
-    return c.json({
-      message: 'Move applied',
-      game: {
-        id: result.game!._id,
-        status: result.game!.status,
-        winner: result.game!.winner,
-        board: result.game!.gameData.board,
-        currentTurn: result.game!.gameData.currentTurn,
-        chainState: result.game!.gameData.chainState,
-        stats: result.game!.stats,
-      },
-      aiMove: result.aiMove ?? null,
-      aiTimeMs: result.aiTimeMs ?? 0,
-      totalTimeMs: elapsed,
-    });
+     return c.json({
+       message: 'Move applied',
+       game: {
+         id: result.game!._id,
+         status: result.game!.status,
+         winner: result.game!.winner,
+         board: result.game!.gameData.board,
+         currentTurn: result.game!.gameData.currentTurn,
+         chainState: result.game!.gameData.chainState,
+         stats: result.game!.stats,
+       },
+       boardAfterPlayerMove: result.boardAfterPlayerMove ?? null,
+       playerMove: result.playerMove ?? null,
+       aiMove: result.aiMove ?? null,
+       aiMoves: result.aiMoves ?? [],
+       aiTimeMs: result.aiTimeMs ?? 0,
+       totalTimeMs: elapsed,
+     });
   } catch (error) {
     console.error('Error making move:', error);
     return c.json({ error: 'Failed to process move' }, 500);
