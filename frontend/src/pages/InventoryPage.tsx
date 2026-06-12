@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageShell } from '../components/ui/PageShell';
 import { StoneButton } from '../components/ui/StoneButton';
 import { motion } from 'framer-motion';
 import { useSkin } from '../hooks/useSkin';
 import { useAudio } from '../hooks/useAudio';
 import { useMusic } from '../hooks/useMusic';
-import { SKINS, FONDOS, DISCOS, PORTADAS } from '../constants/assets';
+import { SKINS, FONDOS, DISCOS, PORTADAS, CARTELES, MARCOS } from '../constants/assets';
+import { getDiscoObtainHint } from '../constants/packages';
 import type { SkinId, FondoId, DiscoId } from '../constants/assets';
 
 type TabId = 'temas' | 'fondos' | 'discos';
 
 export function InventoryPage() {
-  const { skinState, equipTheme, equipFondo, isSkinOwned, isFondoOwned, currentMenuFondo, equipDisco } = useSkin();
-  const { playEquip, playEquipFondo, playButtonClick } = useAudio();
+  const navigate = useNavigate();
+  const { skinState, equipTheme, equipFondo, isSkinOwned, isFondoOwned, currentMenuFondo, equipDisco, isDiscoOwned } = useSkin();
+  const { playEquip, playEquipFondo, playButtonClick, playLocked } = useAudio();
   const { playTrack, playOnce, state: musicState } = useMusic();
   const [activeTab, setActiveTab] = useState<TabId>('temas');
 
@@ -21,9 +24,19 @@ export function InventoryPage() {
     equipTheme(skinId);
   };
 
+  const handleBuyTheme = (skinId: SkinId) => {
+    playButtonClick();
+    navigate('/store');
+  };
+
   const handleEquipFondo = (fondoId: FondoId) => {
     playEquipFondo();
     equipFondo(fondoId);
+  };
+
+  const handleBuyFondo = (fondoId: FondoId) => {
+    playButtonClick();
+    navigate('/store');
   };
 
   const handlePlayDisco = (discoId: DiscoId) => {
@@ -41,6 +54,11 @@ export function InventoryPage() {
     equipDisco(discoId);
   };
 
+  const handleLockedDisco = () => {
+    playLocked();
+    navigate('/store');
+  };
+
   const tabs: { id: TabId; label: string }[] = [
     { id: 'temas', label: 'Temas' },
     { id: 'fondos', label: 'Fondos' },
@@ -53,6 +71,8 @@ export function InventoryPage() {
       backgroundSrc={currentMenuFondo?.file ?? FONDOS.menu.file}
       showBackButton={true}
       backTo="/"
+      signTexture={CARTELES.inventario}
+      showFrame
     >
       <div className="space-y-6 w-full">
         {/* Tab buttons */}
@@ -87,58 +107,78 @@ export function InventoryPage() {
                 return (
                   <div
                     key={skinId}
-                    className={`
-                      relative
-                      bg-gradient-to-b from-mc-stone to-mc-stoneDark
-                      border-4 border-mc-stoneDark
-                      overflow-hidden
-                      ${equipped ? 'ring-4 ring-mc-gold' : ''}
-                      ${!owned ? 'opacity-60' : ''}
-                    `}
+                    className="relative w-full overflow-hidden"
+                    style={{
+                      padding: '4px',
+                      borderImageSource: `url(${MARCOS.minecraft})`,
+                      borderImageSlice: '24 24 24 24',
+                      borderImageWidth: '24px',
+                      borderImageRepeat: 'stretch',
+                      borderStyle: 'solid',
+                      backgroundImage: `url(${MARCOS.minecraft})`,
+                      backgroundRepeat: 'repeat',
+                      backgroundSize: 'cover',
+                    }}
                   >
-                    {/* Theme cover image */}
-                    <div className="relative w-full h-28 md:h-32 bg-cover bg-center" style={{
-                      backgroundImage: `url(${PORTADAS.tema[skinId as keyof typeof PORTADAS.tema]})`,
-                    }} />
+                    <div
+                      className={`
+                        relative
+                        bg-[#C4A46C]/90
+                        border-4 border-[#5C3010]
+                        overflow-hidden
+                        ${equipped ? 'ring-4 ring-[#FFAA00]' : ''}
+                        ${!owned ? 'opacity-60' : ''}
+                      `}
+                    >
+                      {/* Theme cover image */}
+                      <div className="relative w-full h-28 md:h-32 bg-cover bg-center" style={{
+                        backgroundImage: `url(${PORTADAS.tema[skinId as keyof typeof PORTADAS.tema]})`,
+                      }} />
 
-                    {/* Name and premium badge */}
-                    <div className="p-2">
-                      <h4 className="font-pixel text-xs text-mc-textLight uppercase text-center mb-1">
-                        {skin.name}
-                      </h4>
-                      {skin.premium && (
-                        <span className="block text-center font-pixel text-[10px] text-mc-netherGlow uppercase mb-1">
-                          ★ Premium ★
-                        </span>
-                      )}
+                      {/* Name and premium badge */}
+                      <div className="p-2">
+                        <h4 className="font-pixel text-xs text-[#3D2817] uppercase text-center mb-1">
+                          {skin.name}
+                        </h4>
+                        {skin.premium && (
+                          <span className="block text-center font-pixel text-[10px] text-[#8B2500] uppercase mb-1">
+                            ★ Premium ★
+                          </span>
+                        )}
 
-                      {/* Action */}
-                      {owned ? (
-                        equipped ? (
-                          <div className="text-center">
-                            <span className="font-pixel text-[10px] text-mc-gold animate-pulse">
-                              ★ EQUIPADO ★
-                            </span>
-                          </div>
+                        {/* Action */}
+                        {owned ? (
+                          equipped ? (
+                            <div className="text-center">
+                              <span className="font-pixel text-[10px] text-[#1F3D16] animate-pulse">
+                                ★ EQUIPADO ★
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <StoneButton
+                                onClick={() => handleEquipTheme(skinId)}
+                                variant="secondary"
+                                size="sm"
+                                animate={false}
+                              >
+                                Equipar
+                              </StoneButton>
+                            </div>
+                          )
                         ) : (
                           <div className="text-center">
                             <StoneButton
-                              onClick={() => handleEquipTheme(skinId)}
-                              variant="secondary"
+                              onClick={() => handleBuyTheme(skinId)}
+                              variant="primary"
                               size="sm"
                               animate={false}
                             >
-                              Equipar
+                              Comprar
                             </StoneButton>
                           </div>
-                        )
-                      ) : (
-                        <div className="text-center">
-                          <span className="font-pixel text-[10px] text-mc-textMuted uppercase">
-                            🔒 Bloqueado
-                          </span>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -155,7 +195,7 @@ export function InventoryPage() {
             >
               {/* Fondo */}
               <div>
-                <h3 className="font-pixel text-sm text-mc-gold uppercase text-center mb-3">
+                <h3 className="font-pixel text-sm text-[#3D2817] uppercase text-center mb-3">
                   Fondo
                 </h3>
                 {/* Horizontal scroll layout with real covers */}
@@ -171,49 +211,69 @@ export function InventoryPage() {
                     return (
                       <div
                         key={`fondo-${fondoId}`}
-                        className={`
-                          flex-shrink-0
-                          relative
-                          bg-mc-stone border-4 border-mc-stoneDark
-                          p-2
-                          w-36
-                          ${equipped ? 'ring-4 ring-mc-gold' : ''}
-                          ${!owned ? 'opacity-50' : ''}
-                        `}
+                        className="flex-shrink-0 relative w-36 overflow-hidden"
+                        style={{
+                          padding: '3px',
+                          borderImageSource: `url(${MARCOS.minecraft})`,
+                          borderImageSlice: '20 20 20 20',
+                          borderImageWidth: '20px',
+                          borderImageRepeat: 'stretch',
+                          borderStyle: 'solid',
+                          backgroundImage: `url(${MARCOS.minecraft})`,
+                          backgroundRepeat: 'repeat',
+                          backgroundSize: 'cover',
+                        }}
                       >
-                        {/* Cover image using object-contain */}
-                        <div className="relative w-full h-20 mb-2 overflow-hidden rounded">
-                          <img
-                            src={coverUrl}
-                            alt={fondo.name}
-                            className="w-full h-full object-contain"
-                            style={{ imageRendering: 'auto' }}
-                          />
-                        </div>
-                        <p className="font-pixel text-[10px] text-center text-mc-textLight uppercase mb-1 truncate">
-                          {fondo.name}
-                        </p>
-                        {owned ? (
-                          equipped ? (
-                            <span className="block text-center font-pixel text-[10px] text-mc-gold">
-                              ✓ Equipado
-                            </span>
+                        <div
+                          className={`
+                            relative
+                            bg-[#C4A46C]/90
+                            border-2 border-[#5C3010]
+                            p-2
+                            ${equipped ? 'ring-4 ring-[#FFAA00]' : ''}
+                            ${!owned ? 'opacity-50' : ''}
+                          `}
+                        >
+                          {/* Cover image using object-contain */}
+                          <div className="relative w-full h-20 mb-2 overflow-hidden rounded">
+                            <img
+                              src={coverUrl}
+                              alt={fondo.name}
+                              className="w-full h-full object-contain"
+                              style={{ imageRendering: 'auto' }}
+                            />
+                          </div>
+                          <p className="font-pixel text-[10px] text-center text-[#3D2817] uppercase mb-1 truncate">
+                            {fondo.name}
+                          </p>
+                          {owned ? (
+                            equipped ? (
+                              <span className="block text-center font-pixel text-[10px] text-[#1F3D16]">
+                                ✓ Equipado
+                              </span>
+                            ) : (
+                              <StoneButton
+                                onClick={() => handleEquipFondo(fondoId)}
+                                variant="secondary"
+                                size="sm"
+                                className="w-full py-1"
+                                animate={false}
+                              >
+                                Equipar
+                              </StoneButton>
+                            )
                           ) : (
                             <StoneButton
-                              onClick={() => handleEquipFondo(fondoId)}
-                              variant="secondary"
+                              onClick={() => handleBuyFondo(fondoId)}
+                              variant="primary"
                               size="sm"
                               className="w-full py-1"
                               animate={false}
                             >
-                              Equipar
+                              Comprar
                             </StoneButton>
-                          )
-                        ) : (
-                          <span className="block text-center font-pixel text-[10px] text-mc-textMuted">
-                            🔒
-                          </span>
-                        )}
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -231,70 +291,107 @@ export function InventoryPage() {
             >
               {(Object.entries(DISCOS) as [DiscoId, typeof DISCOS[DiscoId]][]).map(([id, disco]) => {
                 const isPlaying = musicState.currentTrack === id && musicState.isPlaying;
+                const isOwned = skinState.unlockedDiscos.includes(id);
+                const obtainHint = getDiscoObtainHint(id);
 
                 return (
                   <div
                     key={id}
-                    className={`
-                      flex items-center gap-4
-                      bg-mc-stone/50 border-2 border-mc-stoneDark
-                      p-3
-                      ${isPlaying ? 'ring-2 ring-mc-gold' : ''}
-                    `}
+                    className="w-full overflow-hidden"
+                    style={{
+                      padding: '3px',
+                      borderImageSource: `url(${MARCOS.minecraft})`,
+                      borderImageSlice: '20 20 20 20',
+                      borderImageWidth: '20px',
+                      borderImageRepeat: 'stretch',
+                      borderStyle: 'solid',
+                      backgroundImage: `url(${MARCOS.minecraft})`,
+                      backgroundRepeat: 'repeat',
+                      backgroundSize: 'cover',
+                    }}
                   >
-                    {/* Disc image */}
-                    <img
-                      src={disco.disc}
-                      alt={disco.name}
-                      className="w-12 h-12 object-contain"
-                      style={{ imageRendering: 'pixelated' }}
-                    />
+                    <div
+                      className={`
+                        flex items-center gap-4
+                        bg-[#C4A46C]/90
+                        border-2 border-[#5C3010]
+                        p-3
+                        ${isPlaying ? 'ring-2 ring-[#FFAA00]' : ''}
+                        ${!isOwned ? 'opacity-60' : ''}
+                      `}
+                    >
+                      {/* Disc image */}
+                      <img
+                        src={disco.disc}
+                        alt={disco.name}
+                        className="w-12 h-12 object-contain"
+                        style={{ imageRendering: 'pixelated' }}
+                      />
 
-                    {/* Track info */}
-                    <div className="flex-1">
-                      <p className="font-pixel text-sm text-mc-textLight uppercase">
-                        {disco.name}
-                      </p>
-                      {isPlaying && (
-                        <span className="font-pixel text-xs text-mc-gold animate-pulse">
-                          ▶ Reproduciendo
-                        </span>
-                      )}
-                      {skinState.equippedDisco === id && !isPlaying && (
-                        <span className="font-pixel text-xs text-mc-gold">
-                          ✓ Equipado
-                        </span>
-                      )}
-                    </div>
+                      {/* Track info */}
+                      <div className="flex-1">
+                        <p className="font-pixel text-sm text-[#3D2817] uppercase">
+                          {disco.name}
+                        </p>
+                        {isPlaying && (
+                          <span className="font-pixel text-xs text-[#1F3D16] animate-pulse">
+                            ▶ Reproduciendo
+                          </span>
+                        )}
+                        {skinState.equippedDisco === id && !isPlaying && (
+                          <span className="font-pixel text-xs text-[#1F3D16]">
+                            ✓ Equipado
+                          </span>
+                        )}
+                        {!isOwned && obtainHint && (
+                          <p className="font-pixel text-[10px] text-[#8B2500] uppercase mt-1">
+                            🔒 {obtainHint}
+                          </p>
+                        )}
+                      </div>
 
-                    {/* Controls */}
-                    <div className="flex gap-2">
-                      <StoneButton
-                        onClick={() => handlePlayDisco(id)}
-                        variant="secondary"
-                        size="sm"
-                        animate={false}
-                      >
-                        ▶
-                      </StoneButton>
-                      <StoneButton
-                        onClick={() => handlePlayOnce(id)}
-                        variant="secondary"
-                        size="sm"
-                        animate={false}
-                      >
-                        1×
-                      </StoneButton>
-                      {skinState.equippedDisco !== id && (
-                        <StoneButton
-                          onClick={() => handleEquipDisco(id)}
-                          variant="primary"
-                          size="sm"
-                          animate={false}
-                        >
-                          Equipar
-                        </StoneButton>
-                      )}
+                      {/* Controls */}
+                      <div className="flex gap-2">
+                        {isOwned ? (
+                          <>
+                            <StoneButton
+                              onClick={() => handlePlayDisco(id)}
+                              variant="secondary"
+                              size="sm"
+                              animate={false}
+                            >
+                              ▶
+                            </StoneButton>
+                            <StoneButton
+                              onClick={() => handlePlayOnce(id)}
+                              variant="secondary"
+                              size="sm"
+                              animate={false}
+                            >
+                              1×
+                            </StoneButton>
+                            {skinState.equippedDisco !== id && (
+                              <StoneButton
+                                onClick={() => handleEquipDisco(id)}
+                                variant="primary"
+                                size="sm"
+                                animate={false}
+                              >
+                                Equipar
+                              </StoneButton>
+                            )}
+                          </>
+                        ) : (
+                          <StoneButton
+                            onClick={handleLockedDisco}
+                            variant="primary"
+                            size="sm"
+                            animate={false}
+                          >
+                            Obtener
+                          </StoneButton>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

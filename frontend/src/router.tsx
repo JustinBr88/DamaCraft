@@ -17,12 +17,21 @@ export function AppRouter() {
       <Route element={<RootLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/store" element={<StorePage />} />
-        <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
+        {/* Inventory requires login */}
+        <Route path="/inventory" element={
+          <AuthGuard>
+            <InventoryPage />
+          </AuthGuard>
+        } />
       </Route>
 
-      {/* Game layout - no nav, full screen game */}
-      <Route path="/game" element={<GamePage />} />
+      {/* Game requires login */}
+      <Route path="/game" element={
+        <AuthGuard>
+          <GamePage />
+        </AuthGuard>
+      } />
     </Routes>
   );
 }

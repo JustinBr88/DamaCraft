@@ -5,6 +5,9 @@ import mongoose from 'mongoose';
 import { userRouter } from './routes/user.js';
 import { gameRouter } from './routes/game.js';
 import { authRouter } from './routes/auth.js';
+import { checkoutRouter } from './routes/checkout.js';
+import { stripeRouter } from './routes/stripe.js';
+import { leaderboardRouter } from './routes/leaderboard.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -30,6 +33,9 @@ app.use('*', cors({
 app.route('/api/auth', authRouter);
 app.route('/api/users', userRouter);
 app.route('/api/games', gameRouter);
+app.route('/api/checkout', checkoutRouter); // POST /api/checkout/session
+app.route('/api/stripe', stripeRouter);      // POST /api/stripe/webhook
+app.route('/api/leaderboard', leaderboardRouter); // GET/POST top-5 and score submission
 
 // Health check
 app.get('/api/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));

@@ -1,6 +1,6 @@
 import type { Board as BoardType, Move, ChainState } from '@damastro/checkers-core';
 import { Cell } from './Cell';
-import { TABLEROS } from '../constants/assets';
+import { TABLEROS, MARCOS } from '../constants/assets';
 import type { TableroTheme } from '../constants/assets';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -79,35 +79,48 @@ export function Board({
 
   return (
     <div
-      className="inline-block rounded-lg overflow-hidden shadow-2xl"
+      className="inline-block rounded-lg overflow-hidden"
       style={{
-        backgroundImage: `url(${texturas.bordes})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        padding: '10px',
+        padding: '12px',
+        borderStyle: 'solid',
+        borderImageSource: `url(${MARCOS.minecraft})`,
+        borderImageSlice: '24 24 24 24',
+        borderImageWidth: '24px',
+        borderImageRepeat: 'stretch',
       }}
     >
-      <div className="grid grid-cols-8" style={{ width: 'min(92vw, 420px)', height: 'min(92vw, 420px)' }}>
-        {board.map((row, rowIdx) =>
-          row.map((cell, colIdx) => (
-            <Cell
-              key={`${rowIdx}-${colIdx}`}
-              cell={cell}
-              row={rowIdx}
-              col={colIdx}
-              isSelected={isSelected(rowIdx, colIdx)}
-              isValidMove={isValidMove(rowIdx, colIdx)}
-              isPlayerPiece={isPlayerPiece(rowIdx, colIdx)}
-              isLastMove={isLastMove(rowIdx, colIdx)}
-              isChainTarget={isChainTarget(rowIdx, colIdx)}
-              chainState={chainState}
-              theme={theme}
-              isAnimating={isAnimating}
-              animateMove={animateMove}
-              onClick={() => handleClick(rowIdx, colIdx)}
-            />
-          ))
-        )}
+      {/* Tablero con bordes temáticos internos */}
+      <div
+        className="rounded-lg overflow-hidden"
+        style={{
+          backgroundImage: `url(${texturas.bordes})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          padding: '8px',
+        }}
+      >
+        <div className="grid grid-cols-8" style={{ width: 'min(92vw, 420px)', height: 'min(92vw, 420px)' }}>
+          {board.map((row, rowIdx) =>
+            row.map((cell, colIdx) => (
+              <Cell
+                key={`${rowIdx}-${colIdx}`}
+                cell={cell}
+                row={rowIdx}
+                col={colIdx}
+                isSelected={isSelected(rowIdx, colIdx)}
+                isValidMove={isValidMove(rowIdx, colIdx)}
+                isPlayerPiece={isPlayerPiece(rowIdx, colIdx)}
+                isLastMove={isLastMove(rowIdx, colIdx)}
+                isChainTarget={isChainTarget(rowIdx, colIdx)}
+                chainState={chainState}
+                theme={theme}
+                isAnimating={isAnimating}
+                animateMove={animateMove}
+                onClick={() => handleClick(rowIdx, colIdx)}
+              />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

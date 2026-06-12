@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PageShell } from '../components/ui/PageShell';
 import { StoneButton } from '../components/ui/StoneButton';
 import { motion } from 'framer-motion';
 import { useAudio } from '../hooks/useAudio';
 import { useSkin } from '../hooks/useSkin';
-import { FONDOS } from '../constants/assets';
+import { FONDOS, CARTELES } from '../constants/assets';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
@@ -16,29 +16,39 @@ interface LeaderboardEntry {
   difficulty: Difficulty;
 }
 
-const MOCK_ENTRIES: Record<Difficulty, LeaderboardEntry[]> = {
-  easy: [
-    { rank: 1, playerName: 'Steve', moves: 18, time: '02:13', difficulty: 'easy' },
-    { rank: 2, playerName: 'Alex', moves: 22, time: '03:01', difficulty: 'easy' },
-    { rank: 3, playerName: 'Herobrine', moves: 25, time: '02:50', difficulty: 'easy' },
-  ],
-  medium: [
-    { rank: 1, playerName: 'Notch', moves: 32, time: '05:45', difficulty: 'medium' },
-    { rank: 2, playerName: 'Creaper', moves: 38, time: '06:12', difficulty: 'medium' },
-    { rank: 3, playerName: 'Zombie', moves: 41, time: '07:03', difficulty: 'medium' },
-  ],
-  hard: [
-    { rank: 1, playerName: 'Enderman', moves: 45, time: '08:22', difficulty: 'hard' },
-    { rank: 2, playerName: 'Blaze', moves: 52, time: '09:15', difficulty: 'hard' },
-    { rank: 3, playerName: 'Wither', moves: 58, time: '10:30', difficulty: 'hard' },
-  ],
+const SIGN_BY_DIFFICULTY: Record<Difficulty, string> = {
+  easy: CARTELES.tablero_facil,
+  medium: CARTELES.tablero_medio,
+  hard: CARTELES.tablero_dificil,
 };
 
 export function LeaderboardPage() {
   const { playButtonClick } = useAudio();
   const { currentFondo } = useSkin();
   const [activeFilter, setActiveFilter] = useState<Difficulty>('easy');
-  const entries = MOCK_ENTRIES[activeFilter];
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchLeaderboard = useCallback(async (difficulty: Difficulty) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/leaderboard?difficulty=${difficulty}`);
+      if (!res.ok) throw new Error('Failed to load leaderboard');
+      const data = await res.json();
+      setEntries(data.entries ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      setEntries([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLeaderboard(activeFilter);
+  }, [activeFilter, fetchLeaderboard]);
 
   const handleFilterChange = (difficulty: Difficulty) => {
     playButtonClick();
@@ -53,10 +63,12 @@ export function LeaderboardPage() {
 
   return (
     <PageShell
-      title="Tablero"
+      title="TABLA DE POSICIONES"
       backgroundSrc={currentFondo?.file ?? FONDOS.overworld.file}
       showBackButton={true}
       backTo="/"
+      signTexture={SIGN_BY_DIFFICULTY[activeFilter]}
+      showFrame
     >
       <div className="space-y-6 w-full">
         {/* Filter tabs */}
@@ -84,8 +96,29 @@ export function LeaderboardPage() {
             <span className="font-pixel text-xs text-mc-gold uppercase">Tiempo</span>
           </div>
 
+          {/* Loading */}
+          {loading && (
+            <div className="text-center py-8">
+              <p className="font-pixel text-sm text-mc-textMuted">Cargando...</p>
+            </div>
+          )}
+
+          {/* Error */}
+          {!loading && error && (
+            <div className="text-center py-8">
+              <p className="font-pixel text-sm text-red-400">{error}</p>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!loading && !error && entries.length === 0 && (
+            <div className="text-center py-8">
+              <p className="font-pixel text-sm text-mc-textMuted">Sin puntajes todavía</p>
+            </div>
+          )}
+
           {/* Entries */}
-          {entries.map((entry, index) => (
+          {!loading && !error && entries.map((entry, index) => (
             <motion.div
               key={`${entry.difficulty}-${entry.rank}`}
               initial={{ opacity: 0, x: -20 }}
@@ -120,13 +153,6 @@ export function LeaderboardPage() {
               </span>
             </motion.div>
           ))}
-        </div>
-
-        {/* Your position indicator (mock) */}
-        <div className="text-center pt-4 border-t-4 border-mc-stoneDark">
-          <p className="font-pixel text-xs text-mc-textMuted uppercase">
-            Tu mejor posición: #15 en Fácil
-          </p>
         </div>
       </div>
     </PageShell>

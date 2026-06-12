@@ -9,7 +9,19 @@ interface IStats {
   currentStreak: number;
 }
 
-// ─── Skins Sub-Schema ─────────────────────────────────────────────────
+// ─── Inventory Sub-Schema ────────────────────────────────────────────────
+
+interface IInventory {
+  purchasedPacks: string[];       // ['nether_pack', 'end_pack']
+  unlockedPieceSets: string[];    // ['overworld', 'nether', 'end']
+  unlockedGameThemes: string[];   // ['overworld', 'nether', 'end']
+  unlockedMenuBackgrounds: string[]; // ['menu', 'overworld', 'nether', 'end']
+  unlockedDiscos: string[];       // disco IDs the user owns
+  equippedPieceSet: string;
+  equippedGameTheme: string;
+  equippedMenuBackground: string;
+  equippedDisco: string;
+}
 
 interface ISkins {
   unlockedBoards: string[];
@@ -18,14 +30,14 @@ interface ISkins {
   equippedPieceSet: string;
 }
 
-// ─── User Interface ───────────────────────────────────────────────────
-
-export interface IUser extends Document {
+interface IUser extends Document {
   clerkId: string;
   email: string;
   username: string;
   stats: IStats;
   skins: ISkins;
+  inventory: IInventory;
+  stripeCustomerId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +64,24 @@ const skinsSchema = new Schema<ISkins>(
   { _id: false }
 );
 
+const inventorySchema = new Schema<IInventory>(
+  {
+    purchasedPacks: { type: [String], default: [] },
+    unlockedPieceSets: { type: [String], default: ['overworld'] },
+    unlockedGameThemes: { type: [String], default: ['overworld'] },
+    unlockedMenuBackgrounds: { type: [String], default: ['menu', 'overworld'] },
+    unlockedDiscos: {
+      type: [String],
+      default: ['menu_music1', 'menu_music2', 'menu_music3', 'menu_music4', 'store_music', 'overwold_music'],
+    },
+    equippedPieceSet: { type: String, default: 'overworld' },
+    equippedGameTheme: { type: String, default: 'overworld' },
+    equippedMenuBackground: { type: String, default: 'menu' },
+    equippedDisco: { type: String, default: 'menu_music1' },
+  },
+  { _id: false }
+);
+
 const userSchema = new Schema<IUser>(
   {
     clerkId: { type: String, required: true, unique: true, index: true },
@@ -59,6 +89,8 @@ const userSchema = new Schema<IUser>(
     username: { type: String, required: true },
     stats: { type: statsSchema, default: () => ({}) },
     skins: { type: skinsSchema, default: () => ({}) },
+    inventory: { type: inventorySchema, default: () => ({}) },
+    stripeCustomerId: { type: String },
   },
   {
     timestamps: true,

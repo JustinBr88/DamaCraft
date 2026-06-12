@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { VideoBackground } from './VideoBackground';
 import { BackButton } from './BackButton';
 import { WoodSign } from './WoodSign';
+import { MARCOS } from '../../constants/assets';
 
 interface PageShellProps {
   children: React.ReactNode;
@@ -13,6 +14,8 @@ interface PageShellProps {
   onBack?: () => void;
   className?: string;
   variant?: 'default' | 'large' | 'small';
+  signTexture?: string; // ruta a /texture/cartel_*.png
+  showFrame?: boolean;   // si mostrar Marco_Minecraft como borde decorativo
 }
 
 export function PageShell({
@@ -24,6 +27,8 @@ export function PageShell({
   onBack,
   className = '',
   variant = 'default',
+  signTexture,
+  showFrame = false,
 }: PageShellProps) {
   return (
     <VideoBackground
@@ -61,9 +66,28 @@ export function PageShell({
 
         {/* Main content */}
         <div className={`flex-1 flex items-center justify-center ${className}`}>
-          <WoodSign variant={variant} animate>
-            {children}
-          </WoodSign>
+          {showFrame ? (
+            // Con marco Minecraft - arquitectura de 4 capas
+            <div
+              className="relative"
+              style={{
+                borderImageSource: `url(${MARCOS.minecraft})`,
+                borderImageSlice: '24 24 24 24',
+                borderImageWidth: '24px',
+                borderImageRepeat: 'stretch',
+                borderStyle: 'solid',
+                padding: '4px',
+              }}
+            >
+              <WoodSign variant={variant} animate textureSrc={signTexture}>
+                {children}
+              </WoodSign>
+            </div>
+          ) : (
+            <WoodSign variant={variant} animate textureSrc={signTexture}>
+              {children}
+            </WoodSign>
+          )}
         </div>
       </div>
     </VideoBackground>

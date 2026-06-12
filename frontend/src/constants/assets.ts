@@ -236,6 +236,12 @@ export const CARTELES = {
   tablero_dificil: '/texture/cartel_tablero_dificil.png',
 } as const;
 
+// ─── Marcos (Frame textures for UI elements) ──────────────────────────────
+
+export const MARCOS = {
+  minecraft: '/texture/Marco_Minecraft.jpg',
+} as const;
+
 // ─── Tableros (Board textures per theme) ─────────────────────────────────
 // Texturas para el tablero de juego según el tema elegido
 

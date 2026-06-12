@@ -9,11 +9,14 @@ import { WinModal } from '../components/WinModal';
 import { useSkin } from '../hooks/useSkin';
 import { useAudio } from '../hooks/useAudio';
 import { useMusicWithControl } from '../hooks/useMusic';
-import { FONDOS } from '../constants/assets';
+import { FONDOS, CARTELES } from '../constants/assets';
+import { WoodSign } from '../components/ui/WoodSign';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '@clerk/clerk-react';
 
 export function GamePage() {
+  const { getToken } = useAuth();
   const { currentFondo, skinState } = useSkin();
   const { playMove, playCapture, playCrown, playVictory, playDefeat, playDraw, preloadSounds } = useAudio();
   const { playTrack } = useMusicWithControl();
@@ -28,6 +31,8 @@ export function GamePage() {
     aiCaptures,
     winner,
     chainState,
+    gameId,
+    difficulty,
     startGame,
     selectPiece,
     makeMove,
@@ -44,6 +49,9 @@ export function GamePage() {
   
   // Track move count for stats
   const [moveCount, setMoveCount] = useState(0);
+
+  // Leaderboard submission guard (prevent double-submit)
+  const leaderboardSubmittedRef = useRef(false);
 
   // Start game timer when game begins
   useEffect(() => {
@@ -106,6 +114,40 @@ export function GamePage() {
       }, 120000);
     }
   };
+
+  // Submit score to leaderboard when player wins against the AI
+  useEffect(() => {
+    if (leaderboardSubmittedRef.current) return;
+    if (status !== 'finished') return;
+    if (winner !== 'player') return;
+    if (!gameId || gameId.startsWith('local-')) return;
+
+    leaderboardSubmittedRef.current = true;
+
+    const submitScore = async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+
+        await fetch('/api/leaderboard', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            gameId,
+            moves: moveCount,
+            elapsedSeconds: gameTime,
+          }),
+        });
+      } catch (err) {
+        console.warn('Leaderboard submission failed:', err);
+      }
+    };
+
+    submitScore();
+  }, [status, winner, gameId, moveCount, gameTime, getToken]);
 
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -226,19 +268,26 @@ export function GamePage() {
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-mc-stone/80 border-4 border-mc-stoneDark p-3 rounded-lg hidden md:flex flex-col items-center min-w-[100px]"
+              className="hidden md:block"
             >
-              <span className="font-pixel text-xs text-mc-textMuted uppercase mb-1">Tiempo</span>
-              <span className="font-pixel text-2xl text-mc-gold">{formatTime(gameTime)}</span>
-              {(status === 'player-turn' || status === 'chain-capture') && (
-                <span className="font-pixel text-xs text-green-400 mt-2">● Tu turno</span>
-              )}
-              {status === 'ai-thinking' && (
-                <span className="font-pixel text-xs text-yellow-400 mt-2">● IA</span>
-              )}
-              {status === 'finished' && (
-                <span className="font-pixel text-xs text-mc-textMuted mt-2">Fin</span>
-              )}
+              <WoodSign
+                variant="small"
+                animate={false}
+                textureSrc={CARTELES.game}
+                className="flex flex-col items-center min-w-[100px]"
+              >
+                <span className="font-pixel text-xs text-mc-textMuted uppercase mb-1">Tiempo</span>
+                <span className="font-pixel text-2xl text-mc-gold">{formatTime(gameTime)}</span>
+                {(status === 'player-turn' || status === 'chain-capture') && (
+                  <span className="font-pixel text-xs text-green-400 mt-2">● Tu turno</span>
+                )}
+                {status === 'ai-thinking' && (
+                  <span className="font-pixel text-xs text-yellow-400 mt-2">● IA</span>
+                )}
+                {status === 'finished' && (
+                  <span className="font-pixel text-xs text-mc-textMuted mt-2">Fin</span>
+                )}
+              </WoodSign>
             </motion.div>
           </div>
         )}
